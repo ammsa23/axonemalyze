@@ -8,49 +8,18 @@ from argparse import ArgumentParser
 
 def load_coordinates(file_path):
     # Load coordinates
-    coords = pd.read_csv(file_path, delim_whitespace=True, header=None, names=['z', 'x', 'y'])
-    coords = coords[['x', 'y', 'z']]  # Reorder columns to x, y, z
+    coords = pd.read_csv(
+        file_path, delim_whitespace=True, header=None, names=["z", "x", "y"]
+    )
+    coords = coords[["x", "y", "z"]]  # Reorder columns to x, y, z
     return coords
 
 
-# def build_network(adjacency_list):
-#     '''
-#     Build the network of axonemes based on nearest neighbors
-#     '''
-#     bidirectional_adj_list = {}
-#     for node, neighbors in adjacency_list.items():
-#         if node not in bidirectional_adj_list:
-#             bidirectional_adj_list[node] = set()
-#         for neighbor in neighbors:
-#             if neighbor not in bidirectional_adj_list:
-#                 bidirectional_adj_list[neighbor] = set()
-#             bidirectional_adj_list[node].add(neighbor)
-#             bidirectional_adj_list[neighbor].add(node)
-
-#     def dfs(node, visited, cluster):
-#         visited.add(node)
-#         cluster.add(node)
-#         for neighbor in bidirectional_adj_list[node]:
-#             if neighbor not in visited:
-#                 dfs(neighbor, visited, cluster)
-
-#     visited = set()
-#     clusters = []
-
-#     for node in bidirectional_adj_list:
-#         if node not in visited:
-#             cluster = set()
-#             dfs(node, visited, cluster)
-#             clusters.append(cluster)
-
-#     return clusters
-
-
 def build_strict_mutual_network(adjacency_list):
-    '''
+    """
     Build a network with a stricter criterion: only recognize a contact if the
     nearest neighbors are mutual (both nodes have each other as neighbors).
-    '''
+    """
     strict_adj_list = {}
 
     for node, neighbors in adjacency_list.items():
@@ -81,8 +50,9 @@ def build_strict_mutual_network(adjacency_list):
     return clusters
 
 
-def segment_axonemes(coord_files, tomogram, output_dir, verbose=False):
-    print('Segmenting axonemes...')
+def segment(coord_files, tomogram, output_dir, verbose=False):
+    if verbose:
+        print("Segmenting axonemes...")
     coords = [load_coordinates(coord_file).values for coord_file in coord_files]
 
     min_dist_dict = {}
@@ -96,7 +66,8 @@ def segment_axonemes(coord_files, tomogram, output_dir, verbose=False):
         min_dist_dict[i] = (np.argmin(avg_dists), np.argpartition(avg_dists, 1)[1])
 
     clusters = build_strict_mutual_network(min_dist_dict)
-    print(clusters)
+    if verbose:
+        print(clusters)
 
     for idx, cluster in enumerate(clusters):
         cluster_list = [coord_files[x] for x in list(cluster)]
@@ -106,45 +77,74 @@ def segment_axonemes(coord_files, tomogram, output_dir, verbose=False):
             xs.extend(xyz[:, 0])
             ys.extend(xyz[:, 1])
             zs.extend(xyz[:, 2])
-            labels.extend([f'doublet{i + 1}'] * xyz.shape[0])
-        tmp_df = pd.DataFrame({'label': labels, 'x': xs, 'y': ys, 'z': zs})
+            labels.extend([f"doublet{i + 1}"] * xyz.shape[0])
+        tmp_df = pd.DataFrame({"label": labels, "x": xs, "y": ys, "z": zs})
         os.makedirs(output_dir, exist_ok=True)
-        tmp_df.to_csv(os.path.join(output_dir, f'axoneme_{tomogram}_{idx + 1}.csv'), index=False)
+        tmp_df.to_csv(
+            os.path.join(output_dir, f"axoneme_{tomogram}_{idx + 1}.csv"), index=False
+        )
+    return clusters
 
 
-def main():
+def segment_axonemes():
     parser = ArgumentParser(description="Segment axonemes from .coords files.")
-    parser.add_argument("input_directory", help="Input directory containing .coords files w/ doublet picks.", required=True)
-    parser.add_argument("output_directory", help="Output directory name containing .csv files with individually segemnted axonemes; this directory is stored in the given input directory.", default=None, required=False)
+    parser.add_argument(
+        "input_directory",
+        help="Input directory containing .coords files w/ doublet picks.",
+    )
+    parser.add_argument(
+        "--output_directory",
+        help="Output directory name containing .csv files with individually segemnted axonemes; this directory is stored in the given input directory.",
+        default=None,
+    )
+    parser.add_argument(
+        "--verbose",
+        help="Print verbose output.",
+        action='store_true'
+    )
     args = parser.parse_args()
 
     input_directory = args.input_directory
-    output_directory = os.path.join(input_directory, "segmented") if args.output_directory is None else os.path.join(input_directory, args.output_directory)
+    output_directory = (
+        os.path.join(input_directory, "segmented")
+        if args.output_directory is None
+        else os.path.join(input_directory, args.output_directory)
+    )
+    verbose = args.verbose
 
-    coord_files = sorted(glob.glob(os.path.join(input_directory, '*coords')))
-    if not coord_files:
+
+    coord_files = sorted(glob.glob(os.path.join(input_directory, "*coords")))
+    if not coord_files and verbose:
         print(f"No .coords files found in directory: {input_directory}")
         return
 
     tomogram_names = [
-        os.path.split(f)[-1].split('_')[1]
-        if len(os.path.split(f)[-1].split('_')) == 4
-        else '_'.join(os.path.split(f)[-1].split('_')[1:3])
+        (
+            os.path.split(f)[-1].split("_")[1]
+            if len(os.path.split(f)[-1].split("_")) == 4
+            else "_".join(os.path.split(f)[-1].split("_")[1:3])
+        )
         for f in coord_files
     ]
     tomogram_ids = np.unique(tomogram_names)
 
     for tomogram in tomogram_ids:
-        print(f"Processing tomogram {tomogram}")
-        tomo_files = sorted(glob.glob(os.path.join(input_directory, f'*_{tomogram}_*coords')))
+        if verbose:
+            print(f"Processing tomogram {tomogram}")
+        tomo_files = sorted(
+            glob.glob(os.path.join(input_directory, f"*_{tomogram}_*coords"))
+        )
         tomo_files = [
-            f for f in tomo_files if len(os.path.split(f)[-1].split('_')) == (4 + len(tomogram.split('_')) - 1)
+            f
+            for f in tomo_files
+            if len(os.path.split(f)[-1].split("_"))
+            == (4 + len(tomogram.split("_")) - 1)
         ]
 
         if len(tomo_files) < 2:
             continue
-        segment_axonemes(tomo_files, tomogram, output_directory)
+        segment(tomo_files, tomogram, output_directory, verbose=verbose)
 
 
 if __name__ == "__main__":
-    main()
+    segment_axonemes()
