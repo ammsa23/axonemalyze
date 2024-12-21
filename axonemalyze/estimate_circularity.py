@@ -140,8 +140,9 @@ def estimate_circularity():
 
         if np.unique(df.label.values).shape[0] >= 5:
             print(
-                f"There are {np.unique(df.label.values).shape[0]} doublets in {os.path.split(csv)[-1]}!\nCircularity: {score_function(np.array(maes).mean())}"
+                f"There are {np.unique(df.label.values).shape[0]} doublets in {os.path.split(csv)[-1]}!\nCircularity: {score_function(np.array(maes).mean()):.4f}"
             )
+            print()
 
 
 if __name__ == "__main__":

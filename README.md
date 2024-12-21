@@ -26,7 +26,7 @@ segment_axonemes test_data/
 
 This function outputs a directory (default `segmented/`) in the input directory with a single `.csv` file per axoneme.
 
-## estimate_circularity.py
+## estimate_circularity
 This function takes a directory as input. This directory should contain all files in the `.csv` format as outputted by `segment_axonemes.py`.
 
 Here is an example of how to run this function:
