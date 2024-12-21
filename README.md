@@ -1,6 +1,12 @@
 # axonemalyze
 Calculate the circularity of axoneme picks from cryo-ET images.
 
+# Installation
+You can install the `axonemalyze` by performing the following command:
+```
+pip install axonemalyze
+```
+
 # Functions
 The code is split into two command-line functions:
 - `segment_axonemes`
