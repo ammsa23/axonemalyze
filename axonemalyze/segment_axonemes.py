@@ -8,9 +8,7 @@ from argparse import ArgumentParser
 
 def load_coordinates(file_path):
     # Load coordinates
-    coords = pd.read_csv(
-        file_path, delim_whitespace=True, header=None, names=["z", "x", "y"]
-    )
+    coords = pd.read_csv(file_path, sep=r"\s+", header=None, names=["z", "x", "y"])
     coords = coords[["x", "y", "z"]]  # Reorder columns to x, y, z
     return coords
 
@@ -67,8 +65,9 @@ def segment(coord_files, tomogram, output_dir, verbose=False):
 
     clusters = build_strict_mutual_network(min_dist_dict)
     if verbose:
-        print(clusters)
-
+        for cluster in clusters:
+            print([int(x) for x in cluster])
+        print()
     for idx, cluster in enumerate(clusters):
         cluster_list = [coord_files[x] for x in list(cluster)]
         xs, ys, zs, labels = [], [], [], []
@@ -97,11 +96,7 @@ def segment_axonemes():
         help="Output directory name containing .csv files with individually segemnted axonemes; this directory is stored in the given input directory.",
         default=None,
     )
-    parser.add_argument(
-        "--verbose",
-        help="Print verbose output.",
-        action='store_true'
-    )
+    parser.add_argument("--verbose", help="Print verbose output.", action="store_true")
     args = parser.parse_args()
 
     input_directory = args.input_directory
@@ -112,37 +107,29 @@ def segment_axonemes():
     )
     verbose = args.verbose
 
-
     coord_files = sorted(glob.glob(os.path.join(input_directory, "*coords")))
     if not coord_files and verbose:
         print(f"No .coords files found in directory: {input_directory}")
         return
 
-    tomogram_names = [
-        (
-            os.path.split(f)[-1].split("_")[1]
-            if len(os.path.split(f)[-1].split("_")) == 4
-            else "_".join(os.path.split(f)[-1].split("_")[1:3])
-        )
-        for f in coord_files
-    ]
-    tomogram_ids = np.unique(tomogram_names)
+    tomogram_ids = np.unique(
+        [
+            "_".join(os.path.split(f)[-1].split("_PtsAdded.coords")[0].split("_")[:-1])
+            for f in coord_files
+        ]
+    )
+    if verbose:
+        print(tomogram_ids)
 
     for tomogram in tomogram_ids:
         if verbose:
             print(f"Processing tomogram {tomogram}")
         tomo_files = sorted(
-            glob.glob(os.path.join(input_directory, f"*_{tomogram}_*coords"))
+            glob.glob(os.path.join(input_directory, f"{tomogram}_*coords"))
         )
-        tomo_files = [
-            f
-            for f in tomo_files
-            if len(os.path.split(f)[-1].split("_"))
-            == (4 + len(tomogram.split("_")) - 1)
-        ]
-
         if len(tomo_files) < 2:
             continue
+
         segment(tomo_files, tomogram, output_directory, verbose=verbose)
 
 
