@@ -11,7 +11,7 @@ source = "vcs"
 
 [project]
 name = "axonemalyze"
-version = "0.0.1a1"
+version = "0.0.1"
 description = "Calculate the circularity of axoneme picks from cryo-ET images."
 license = { text = "MIT License" }
 authors = [
